@@ -1,0 +1,7 @@
+syntax = "Lua52" # 按 Lua 5.2 语法解析
+indent_type = "Spaces" # 缩进用空格
+indent_width = 2  # 缩进宽度 2
+column_width = 120 # 行宽上限 119
+line_endings = "Unix" # 换行用 LF
+quote_style = "AutoPreferDouble" # 优先双引号
+collapse_simple_statement = "Always" # 简单语句尽量压成一行
