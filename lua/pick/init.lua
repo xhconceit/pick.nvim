@@ -19,9 +19,15 @@ local M = {}
 ---@field load? boolean|fun(plug_data: {spec: vim.pack.Spec, path: string})
 ---@field confirm? boolean
 
+---@class pick.Checker
+---@field enabled? boolean
+---@field frequency? number
+---@field force? boolean
+
 ---@class pick.Config
 ---@field plugins? pick.Spec[]
 ---@field add? pick.AddOpts
+---@field checker? pick.Checker
 
 local loaded = {}
 
@@ -97,9 +103,100 @@ local function setup_cmd(spec)
   end
 end
 
+local state_path = vim.fn.stdpath("state") .. "/pick.json"
+
+local function read_state()
+  local f = io.open(state_path, "r")
+  if f then
+    local ok, data = pcall(vim.json.decode, f:read("*a"))
+    f:close()
+    if ok and data then return data end
+  end
+  return {
+    last_check = 0,
+  }
+end
+
+local function write_state(data)
+  vim.fn.mkdir(vim.fn.fnamemodify(state_path, ":p:h"), "p")
+  local f = io.open(state_path, "w")
+  if not f then return end
+  f:write(vim.json.encode(data))
+  f:close()
+end
+
+local function setup_checker(checker_opts)
+  local frequency = checker_opts.frequency or 86400
+  local force = checker_opts.force or false
+
+  local function check()
+    write_state({ last_check = os.time() })
+    vim.pack.update(nil, { force = force })
+    if force then vim.defer_fn(check, frequency * 1000) end
+  end
+
+  local last = read_state().last_check
+  local next_check = math.max(last + frequency - os.time(), 0)
+  vim.defer_fn(check, next_check * 1000)
+end
+
+local subcommands = {
+  update = function(args)
+    local names = #args > 0 and args or nil
+    vim.pack.update(names)
+  end,
+  del = function(args)
+    for _, name in ipairs(args) do
+      vim.pack.del(name)
+    end
+  end,
+  list = function()
+    local plugins = vim.pack.get() or {}
+    if #plugins == 0 then
+      vim.notify("[pick.nvim] No managed plugins", vim.log.levels.INFO)
+      return
+    end
+    local lines = {}
+    for _, p in ipairs(plugins) do
+      table.insert(lines, string.format("- %s (%s)", p.name, p.status or "unknown"))
+    end
+    vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
+  end,
+  check = function()
+    write_state({ last_check = os.time() })
+    vim.pack.update(nil, { force = false })
+  end,
+}
+
+vim.api.nvim_create_user_command("Pick", function(args)
+  local parts = vim.split(vim.trim(args.args), "%s+", { trimempty = true })
+  local sub = table.remove(parts, 1)
+  if not sub or sub == "" then sub = "update" end
+  local handler = subcommands[sub]
+  if handler then
+    handler(parts)
+  else
+    vim.notify("[pick.nvim] Unknown subcommand: " .. sub, vim.log.levels.ERROR)
+  end
+end, {
+  nargs = "*",
+  complete = function(_, line)
+    local parts = vim.split(vim.trim(line), "%s+")
+    if #parts <= 2 then
+      return vim.tbl_filter(function(key) return key:find(parts[2] or "", 1, true) == 1 end, vim.tbl_keys(subcommands))
+    end
+    if parts[2] == "update" or parts[2] == "del" then
+      local managed = vim.pack.get() or {}
+      local names = vim.tbl_map(function(p) return p.name end, managed)
+      return vim.tbl_filter(function(name) return name:find(parts[#parts] or "", 1, true) == 1 end, names)
+    end
+    return {}
+  end,
+})
+
 ---@param opts? pick.Config
 function M.setup(opts)
-  if not vim.pack then error("[pick.nvim] 需要 Neovim 0.12+(vim.pick 不可用)，请升级") end
+  if not vim.pack then error("[pick.nvim] Requires Neovim 0.12+ (vim.pack is not available)") end
   opts = opts or {}
   local plugins = opts.plugins or {}
   local add_opts = opts.add or {}
@@ -147,20 +244,22 @@ function M.setup(opts)
       if spec.cmd then setup_cmd(spec) end
     end
   end
+  local checker = opts.checker or {}
+  if checker.enabled then setup_checker(checker) end
 end
 
 function M.update(name, opts)
-  if not vim.pack then error("[pick.nvim] 需要 Neovim 0.12+(vim.pick 不可用)，请升级") end
+  if not vim.pack then error("[pick.nvim] Requires Neovim 0.12+ (vim.pack is not available)") end
   vim.pack.update(name, opts)
 end
 
 function M.del(name, opts)
-  if not vim.pack then error("[pick.nvim] 需要 Neovim 0.12+(vim.pick 不可用)，请升级") end
+  if not vim.pack then error("[pick.nvim] Requires Neovim 0.12+ (vim.pack is not available)") end
   vim.pack.del(name, opts)
 end
 
 function M.get(name)
-  if not vim.pack then error("[pick.nvim] 需要 Neovim 0.12+(vim.pick 不可用)，请升级") end
+  if not vim.pack then error("[pick.nvim] Requires Neovim 0.12+ (vim.pack is not available)") end
   return vim.pack.get(name)
 end
 

@@ -19,7 +19,9 @@
 - **Familiar Syntax:** Declarative `lazy.nvim`-style configuration for plugins.
 - **Lazy Loading:** Native support for `event`, `ft`, and `cmd` lazy-load triggers.
 - **Zero Dependencies:** Pure Lua, requiring only Neovim 0.12+ and Git.
-- **Lightweight:** Tiny codebase (~200 lines).
+- **Auto Update:** Built-in periodic update checker with configurable interval.
+- **Commands:** `:Pick` command with subcommands for managing plugins.
+- **Lightweight:** Tiny codebase (~270 lines).
 
 ## 📋 Requirements
 
@@ -133,6 +135,29 @@ require("pick").setup({
 })
 ```
 
+### Checker
+
+The `checker` table enables automatic periodic update checks:
+
+```lua
+require("pick").setup({
+  checker = {
+    enabled = true,       -- enable auto update check (default: false)
+    frequency = 86400,    -- check interval in seconds (default: 86400 = 1 day)
+    force = false,        -- true: silent update; false: show confirmation buffer (default: false)
+  },
+  plugins = { ... },
+})
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | `boolean?` | `false` | Enable the auto update checker. |
+| `frequency` | `number?` | `86400` | Check interval in seconds. |
+| `force` | `boolean?` | `false` | If `true`, updates are applied silently. If `false`, a confirmation buffer is shown. |
+
+The last check time is persisted in `stdpath("state")/pick.json`, so it survives across sessions. When `force = true`, the checker reschedules itself for long-running sessions; when `force = false`, it only triggers once per Neovim startup (to avoid repeatedly popping up the confirmation buffer).
+
 ## ⏳ Lazy Loading
 
 When `event`, `ft`, or `cmd` is specified (or `lazy = true`), the plugin is registered with `vim.pack.add(..., { load = false })` and loaded later via a trigger:
@@ -194,6 +219,20 @@ The `build` field runs after a plugin is installed or updated (via the `PackChan
   end,
 }
 ```
+
+## 💻 Commands
+
+pick.nvim provides a `:Pick` command with the following subcommands:
+
+| Command | Description |
+|---------|-------------|
+| `:Pick` | Update all plugins (same as `:Pick update`). |
+| `:Pick update [name ...]` | Update all or specified plugins. Shows a confirmation buffer. |
+| `:Pick del <name ...>` | Delete specified plugin(s). |
+| `:Pick list` | List all managed plugins with their status. |
+| `:Pick check` | Manually trigger an update check (resets the checker timer). |
+
+All subcommands support Tab completion for both subcommand names and plugin names.
 
 ## 📖 API
 
