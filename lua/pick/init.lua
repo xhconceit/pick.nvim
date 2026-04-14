@@ -24,8 +24,13 @@ local M = {}
 ---@field frequency? number
 ---@field force? boolean
 
+---@class pick.ImportSpec
+---@field import string
+
+---@alias pick.SpecEntry pick.Spec | pick.ImportSpec
+
 ---@class pick.Config
----@field plugins? pick.Spec[]
+---@field plugins? (pick.Spec | pick.ImportSpec)[]
 ---@field add? pick.AddOpts
 ---@field checker? pick.Checker
 
@@ -194,11 +199,52 @@ end, {
   end,
 })
 
+local function import_specs(mod_path)
+  local specs = {}
+
+  local pattern = mod_path:gsub("%.", "/")
+  local files = vim.fn.globpath(vim.o.runtimepath, "lua/" .. pattern .. "/**/*.lua", false, true)
+
+  for _, file in ipairs(files) do
+    local mod_name = file:match("lua/(.+)%.lua$"):gsub("/", ".")
+
+    local ok, mod = pcall(require, mod_name)
+
+    if ok then
+      if vim.islist(mod) then
+        vim.list_extend(specs, mod)
+      else
+        table.insert(specs, mod)
+      end
+    end
+  end
+  return specs
+end
+
+local function resolve_plugins(plugins)
+  local result = {}
+  for _, spec in ipairs(plugins) do
+    if spec.import then
+      vim.list_extend(result, import_specs(spec.import))
+    else
+      table.insert(result, spec)
+    end
+  end
+  return result
+end
+
+local function normalize_src(src)
+  if src and not src:find("://") and not src:find("^/") and src:match("^[%w%-_.]+/[%w%-_.]+$") then
+    return "https://github.com/" .. src
+  end
+  return src
+end
+
 ---@param opts? pick.Config
 function M.setup(opts)
   if not vim.pack then error("[pick.nvim] Requires Neovim 0.12+ (vim.pack is not available)") end
   opts = opts or {}
-  local plugins = opts.plugins or {}
+  local plugins = resolve_plugins(opts.plugins or {})
   local add_opts = opts.add or {}
   local build_map = {}
 
@@ -219,7 +265,7 @@ function M.setup(opts)
 
   for _, spec in ipairs(plugins) do
     local src = spec[1] or spec.src
-
+    src = normalize_src(src) 
     if spec.build then
       local name = spec.name or vim.fn.fnamemodify(src, ":t")
       build_map[name] = spec.build
