@@ -266,6 +266,10 @@ require("lazy").setup({
 
 Alternatively, keep the two sets of plugins completely separate — use lazy.nvim for plugins that need its advanced features, and pick.nvim for simple ones managed by `vim.pack`.
 
+## 🙏 Acknowledgements
+
+- [lazy.nvim](https://github.com/folke/lazy.nvim) — The modern plugin manager that inspired pick.nvim's declarative configuration style.
+
 ## 📄 License
 
 MIT

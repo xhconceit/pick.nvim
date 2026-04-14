@@ -266,6 +266,10 @@ require("lazy").setup({
 
 或者将两者的插件完全分开管理——用 lazy.nvim 管理需要其高级功能的插件，用 pick.nvim 管理简单的、由 `vim.pack` 托管的插件。
 
+## 🙏 致谢
+
+- [lazy.nvim](https://github.com/folke/lazy.nvim) — pick.nvim 的声明式配置风格深受其启发，感谢这个优秀的现代插件管理器。
+
 ## 📄 许可证
 
 MIT
