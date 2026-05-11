@@ -264,6 +264,8 @@ require("lazy").setup({
 })
 ```
 
+Additionally, **pick.nvim must be loaded before lazy.nvim**. Otherwise, lazy.nvim will have already modified `packpath` during its initialization, and the plugins registered by pick.nvim will not be discoverable. In your `init.lua`, call `require("pick").setup({...})` first, then `require("lazy").setup({...})`.
+
 Alternatively, keep the two sets of plugins completely separate — use lazy.nvim for plugins that need its advanced features, and pick.nvim for simple ones managed by `vim.pack`.
 
 ## 🙏 Acknowledgements

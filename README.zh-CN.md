@@ -264,6 +264,8 @@ require("lazy").setup({
 })
 ```
 
+此外，**pick.nvim 必须比 lazy.nvim 先加载**。否则 lazy.nvim 在初始化时已经修改了 `packpath`，pick.nvim 注册的插件将无法被正确发现。请在 `init.lua` 中先 `require("pick").setup({...})`，再调用 `require("lazy").setup({...})`。
+
 或者将两者的插件完全分开管理——用 lazy.nvim 管理需要其高级功能的插件，用 pick.nvim 管理简单的、由 `vim.pack` 托管的插件。
 
 ## 🙏 致谢
